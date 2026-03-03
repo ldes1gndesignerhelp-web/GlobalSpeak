@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlobalSpeak - TeamSpeak & Hamachi стиль</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Arial', sans-serif;
+        }
+
+        body {
+            background: #0a0c0f;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            color: #cccccc;
+        }
+
+        /* Главный контейнер */
+        .globalspeak {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            background: #1a1e24;
+        }
+
+        /* ===== ЛЕВАЯ ПАНЕЛЬ (TEAMSPEAK СТИЛЬ) ===== */
+        .servers-panel {
+            width: 70px;
+            background: #1e2329;
+            border-right: 1px solid #2a313c;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 15px 0;
+            gap: 8px;
+        }
+
+        .server-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 15px;
+            background: #2d3540;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #a0b0c0;
+            font-weight: bold;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .server-icon:hover {
+            border-radius: 12px;
+            background: #3a4452;
+            color: white;
+        }
+
+        .server-icon.active {
+            background: #4c9aff;
+            color: white;
+            border-radius: 12px;
+        }
+
+        .server-icon.active::before {
+            content: '';
+            position: absolute;
+            left: -3px;
+            top: 15px;
+            bottom: 15px;
+            width: 3px;
+            background: white;
+            border-radius: 3px;
+        }
+
+        .server-divider {
+            width: 40px;
+            height: 2px;
+            background: #2a313c;
+            margin: 8px 0;
+        }
+
+        /* ===== СРЕДНЯЯ ПАНЕЛЬ (КАНАЛЫ) ===== */
+        .channels-panel {
+            width: 280px;
+            background: #242a32;
+            border-right: 1px solid #2a313c;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            padding: 20px;
+            background: #1e2329;
+            border-bottom: 2px solid #2a313c;
+        }
+
+        .server-name {
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .server-status {
+            color: #8a9aa8;
+            font-size: 12px;
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4caf50;
+        }
+
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        /* Категории как в TeamSpeak */
+        .category {
+            margin-bottom: 20px;
+        }
+
+        .category-header {
+            padding: 5px 8px;
+            color: #8a9aa8;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+        }
+
+        .category-header:hover {
+            color: #b0c0d0;
+        }
+
+        .channel-item {
+            padding: 8px 8px 8px 25px;
+            margin: 2px 0;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #a0b0c0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .channel-item:hover {
+            background: #2d3540;
+            color: white;
+        }
+
+        .channel-item.active {
+            background: #3a4452;
+            color: white;
+        }
+
+        .channel-icon {
+            font-size: 14px;
+            color: #6f7c8c;
+        }
+
+        .channel-name {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .channel-badge {
+            font-size: 10px;
+            background: #2d3540;
+            padding: 2px 6px;
+            border-radius: 10px;
+            color: #8a9aa8;
+        }
+
+        /* Список пользователей */
+        .user-list {
+            margin-top: 5px;
+        }
+
+        .user-item {
+            padding: 6px 8px 6px 25px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #a0b0c0;
+        }
+
+        .user-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4caf50;
+        }
+
+        .user-status.away {
+            background: #ff9800;
+        }
+
+        .user-name {
+            flex: 1;
+        }
+
+        .user-badge {
+            font-size: 10px;
+            background: #2d3540;
+            padding: 2px 6px;
+            border-radius: 10px;
+            color: #8a9aa8;
+        }
+
+        /* ===== ОСНОВНАЯ ПАНЕЛЬ (ЧАТ) ===== */
+        .main-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #1a1e24;
+        }
+
+        .chat-header {
+            padding: 20px;
+            background: #1e2329;
+            border-bottom: 2px solid #2a313c;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .channel-info h2 {
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .room-code {
+            font-family: monospace;
+            background: #2d3540;
+            padding: 4px 8px;
+            border-radius: 4px;
+            color: #4c9aff;
+            font-size: 14px;
+        }
+
+        .channel-topic {
+            color: #8a9aa8;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            padding: 6px 12px;
+            background: #2d3540;
+            border: none;
+            border-radius: 4px;
+            color: #a0b0c0;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .action-btn:hover {
+            background: #3a4452;
+            color: white;
+        }
+
+        /* Сообщения */
+        .messages-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: #1a1e24;
+        }
+
+        .message {
+            display: flex;
+            gap: 15px;
+            padding: 4px 0;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #2d3540;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 16px;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .message-content {
+            flex: 1;
+        }
+
+        .message-header {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            margin-bottom: 4px;
+        }
+
+        .message-author {
+            font-weight: 600;
+            font-size: 14px;
+            color: white;
+        }
+
+        .message-time {
+            font-size: 11px;
+            color: #6f7c8c;
+        }
+
+        .message-text {
+            font-size: 14px;
+            line-height: 1.5;
+            color: #e0e0e0;
+            background: #242a32;
+            padding: 8px 12px;
+            border-radius: 8px;
+            display: inline-block;
+            max-width: 100%;
+            word-wrap: break-word;
+        }
+
+        .message.own .message-text {
+            background: #2b4b6e;
+        }
+
+        .system-message {
+            text-align: center;
+            color: #6f7c8c;
+            font-size: 12px;
+            padding: 8px;
+            font-style: italic;
+            background: #242a32;
+            border-radius: 4px;
+            margin: 5px 0;
+        }
+
+        /* Ввод сообщения */
+        .input-area {
+            padding: 20px;
+            background: #1e2329;
+            border-top: 2px solid #2a313c;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 10px;
+            background: #242a32;
+            border: 1px solid #2d3540;
+            border-radius: 8px;
+            padding: 4px;
+        }
+
+        #messageInput {
+            flex: 1;
+            padding: 12px 16px;
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 14px;
+            outline: none;
+        }
+
+        #messageInput::placeholder {
+            color: #5f6c7c;
+        }
+
+        #sendBtn {
+            width: 40px;
+            background: transparent;
+            border: none;
+            color: #5f6c7c;
+            font-size: 20px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        #sendBtn:hover {
+            color: #4c9aff;
+            background: #2d3540;
+        }
+
+        /* ===== ПРОФИЛЬ (КАК В HAMACHI) ===== */
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px;
+            background: #1a1e24;
+            border-top: 2px solid #2a313c;
+            margin-top: auto;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #4c9aff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 16px;
+            color: white;
+        }
+
+        .user-info {
+            flex: 1;
+        }
+
+        .user-display-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: white;
+        }
+
+        .user-ip {
+            font-size: 11px;
+            color: #6f7c8c;
+            font-family: monospace;
+        }
+
+        .user-edit {
+            font-size: 11px;
+            color: #6f7c8c;
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .user-edit:hover {
+            background: #2d3540;
+            color: white;
+        }
+
+        /* ===== МОДАЛЬНЫЕ ОКНА ===== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.hidden {
+            display: none;
+        }
+
+        .modal {
+            width: 400px;
+            background: #242a32;
+            border-radius: 8px;
+            border: 1px solid #2d3540;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #2d3540;
+        }
+
+        .modal-header h3 {
+            color: white;
+            font-size: 18px;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .modal-body label {
+            display: block;
+            color: #8a9aa8;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+
+        .modal-body input {
+            width: 100%;
+            padding: 12px;
+            background: #1a1e24;
+            border: 1px solid #2d3540;
+            border-radius: 4px;
+            color: white;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        .modal-body input:focus {
+            outline: none;
+            border-color: #4c9aff;
+        }
+
+        .modal-footer {
+            padding: 15px 20px;
+            border-top: 1px solid #2d3540;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .modal-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .modal-btn.secondary {
+            background: #2d3540;
+            color: #a0b0c0;
+        }
+
+        .modal-btn.secondary:hover {
+            background: #3a4452;
+        }
+
+        .modal-btn.primary {
+            background: #4c9aff;
+            color: white;
+        }
+
+        .modal-btn.primary:hover {
+            background: #6ba9ff;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .empty-state {
+            color: #5f6c7c;
+            text-align: center;
+            margin-top: 100px;
+            font-size: 14px;
+        }
+
+        .hamachi-badge {
+            background: #2d3540;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            color: #ff9800;
+            font-family: monospace;
+        }
+
+        /* Анимации */
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .connecting {
+            animation: pulse 1.5s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="globalspeak">
+        <!-- Левая панель - серверы (TeamSpeak стиль) -->
+        <div class="servers-panel">
+            <div class="server-icon active">GS</div>
+            <div class="server-divider"></div>
+            <div class="server-icon" onclick="showCreateRoomModal()">➕</div>
+            <div class="server-icon" onclick="showJoinRoomModal()">🔗</div>
+            <div class="server-divider"></div>
+            <div class="server-icon" onclick="window.open('https://hamachi.ru', '_blank')">🌐</div>
+        </div>
+
+        <!-- Средняя панель - каналы -->
+        <div class="channels-panel">
+            <div class="panel-header">
+                <div class="server-name">
+                    <span>🌍</span> GlobalSpeak
+                </div>
+                <div class="server-status">
+                    <span class="status-dot" id="statusDot"></span>
+                    <span id="connectionStatus">Подключение...</span>
+                </div>
+            </div>
+            
+            <div class="panel-content">
+                <div class="category">
+                    <div class="category-header">
+                        <span>▼</span> СОХРАНЕННЫЕ КОМНАТЫ
+                    </div>
+                    <div id="savedRoomsList">
+                        <!-- Сюда будут добавляться сохраненные комнаты -->
+                    </div>
+                </div>
+
+                <div class="category">
+                    <div class="category-header">
+                        <span>▼</span> УЧАСТНИКИ (<span id="userCount">0</span>)
+                    </div>
+                    <div class="user-list" id="usersList">
+                        <!-- Сюда будут добавляться участники -->
+                    </div>
+                </div>
+
+                <div class="category">
+                    <div class="category-header">
+                        <span>▼</span> ПОДКЛЮЧЕНИЕ
+                    </div>
+                    <div class="channel-item" onclick="showHamachiInfo()">
+                        <span class="channel-icon">🌐</span>
+                        <span class="channel-name">Hamachi VPN</span>
+                        <span class="channel-badge">инфо</span>
+                    </div>
+                    <div class="channel-item" onclick="copyLocalIP()">
+                        <span class="channel-icon">🔌</span>
+                        <span class="channel-name">Локальный IP</span>
+                        <span class="channel-badge" id="localIP">...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Профиль пользователя (Hamachi стиль) -->
+            <div class="user-profile">
+                <div class="user-avatar" id="userAvatar">U</div>
+                <div class="user-info">
+                    <div class="user-display-name" id="displayUsername">Загрузка...</div>
+                    <div class="user-ip" id="userIP">255.255.255.255</div>
+                </div>
+                <div class="user-edit" onclick="showEditNameModal()">✎</div>
+            </div>
+        </div>
+
+        <!-- Основная панель - чат -->
+        <div class="main-panel">
+            <div class="chat-header">
+                <div class="channel-info">
+                    <h2>
+                        <span id="currentRoomName"># Добро пожаловать</span>
+                        <span class="room-code" id="roomCodeDisplay" style="display: none;"></span>
+                    </h2>
+                    <div class="channel-topic" id="roomTopic">
+                        Создайте комнату или подключитесь по коду
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button class="action-btn" id="copyCodeBtn" style="display: none;" onclick="copyRoomCode()">
+                        📋 Код
+                    </button>
+                    <button class="action-btn" onclick="showJoinRoomModal()">
+                        🔗 Подключиться
+                    </button>
+                    <button class="action-btn" onclick="showCreateRoomModal()">
+                        ➕ Создать
+                    </button>
+                </div>
+            </div>
+
+            <div class="messages-area" id="messagesArea">
+                <div class="empty-state" id="emptyState">
+                    🌍 Добро пожаловать в GlobalSpeak<br>
+                    <span style="color: #4c9aff;">Нажмите ➕ чтобы создать комнату</span>
+                </div>
+            </div>
+
+            <div class="input-area" id="inputArea" style="display: none;">
+                <div class="input-wrapper">
+                    <input type="text" id="messageInput" placeholder="Введите сообщение..." autocomplete="off">
+                    <button id="sendBtn">➤</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно создания -->
+    <div id="createRoomModal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Создать новую комнату</h3>
+            </div>
+            <div class="modal-body">
+                <label>Ваше имя</label>
+                <input type="text" id="createUsername" placeholder="Ваш ник" value="">
+                
+                <label>Название комнаты (необязательно)</label>
+                <input type="text" id="roomName" placeholder="Моя комната">
+                
+                <div style="color: #8a9aa8; font-size: 12px; margin-top: 5px;">
+                    Будет создан уникальный код комнаты
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn secondary" onclick="hideModal('createRoomModal')">Отмена</button>
+                <button class="modal-btn primary" onclick="createRoom()">Создать</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно подключения -->
+    <div id="joinRoomModal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Подключиться к комнате</h3>
+            </div>
+            <div class="modal-body">
+                <label>Ваше имя</label>
+                <input type="text" id="joinUsername" placeholder="Ваш ник" value="">
+                
+                <label>Код комнаты</label>
+                <input type="text" id="roomCode" placeholder="XXXXXXX" style="text-transform: uppercase;">
+                
+                <div style="color: #8a9aa8; font-size: 12px;">
+                    Введите код, который дал друг
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn secondary" onclick="hideModal('joinRoomModal')">Отмена</button>
+                <button class="modal-btn primary" onclick="joinRoom()">Подключиться</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно изменения ника -->
+    <div id="editNameModal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Изменить никнейм</h3>
+            </div>
+            <div class="modal-body">
+                <label>Новый ник</label>
+                <input type="text" id="newUsername" placeholder="Введите новый ник" value="">
+                <p style="color: #8a9aa8; font-size: 12px;">Ник сохранится автоматически</p>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn secondary" onclick="hideModal('editNameModal')">Отмена</button>
+                <button class="modal-btn primary" onclick="saveNewUsername()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно Hamachi -->
+    <div id="hamachiModal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Hamachi подключение</h3>
+            </div>
+            <div class="modal-body">
+                <p style="color: white; margin-bottom: 15px;">Для подключения через Hamachi:</p>
+                
+                <label>1. Установите Hamachi</label>
+                <div style="background: #1a1e24; padding: 10px; border-radius: 4px; margin-bottom: 15px;">
+                    <a href="https://vpn.net" target="_blank" style="color: #4c9aff;">https://vpn.net</a>
+                </div>
+                
+                <label>2. Ваш Hamachi IP</label>
+                <div style="background: #1a1e24; padding: 10px; border-radius: 4px; margin-bottom: 15px; font-family: monospace;" id="hamachiIP">
+                    Загрузка...
+                </div>
+                
+                <label>3. Адрес для друга</label>
+                <div style="background: #1a1e24; padding: 10px; border-radius: 4px; font-family: monospace;" id="hamachiURL">
+                    http://[hamachi_ip]:3000
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn primary" onclick="hideModal('hamachiModal')">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let currentRoom = null;
+        let currentRoomName = '';
+        
+        // ========== РАБОТА С НИКОМ ==========
+        
+        function loadUsername() {
+            let username = localStorage.getItem('globalspeak_username');
+            if (!username) {
+                username = generateRandomUsername();
+                localStorage.setItem('globalspeak_username', username);
+            }
+            return username;
+        }
+        
+        function generateRandomUsername() {
+            const prefixes = ['User', 'Friend', 'Guest', 'Player', 'Gamer'];
+            const suffix = Math.floor(Math.random() * 1000);
+            return prefixes[Math.floor(Math.random() * prefixes.length)] + suffix;
+        }
+        
+        function saveUsername(username) {
+            localStorage.setItem('globalspeak_username', username);
+            updateUsernameDisplay();
+        }
+        
+        function updateUsernameDisplay() {
+            const username = loadUsername();
+            document.getElementById('userAvatar').textContent = username[0].toUpperCase();
+            document.getElementById('displayUsername').textContent = username;
+            document.getElementById('createUsername').value = username;
+            document.getElementById('joinUsername').value = username;
+        }
+        
+        function saveNewUsername() {
+            const newUsername = document.getElementById('newUsername').value.trim();
+            if (newUsername) {
+                saveUsername(newUsername);
+                hideModal('editNameModal');
+                
+                if (currentRoom) {
+                    socket.emit('join-room', { 
+                        roomId: currentRoom, 
+                        username: newUsername 
+                    });
+                }
+            }
+        }
+        
+        function showEditNameModal() {
+            document.getElementById('newUsername').value = loadUsername();
+            document.getElementById('editNameModal').classList.remove('hidden');
+        }
+        
+        // ========== РАБОТА С КОМНАТАМИ ==========
+        
+        function loadSavedRooms() {
+            const saved = localStorage.getItem('globalspeak_rooms');
+            return saved ? JSON.parse(saved) : [];
+        }
+        
+        function saveRoom(roomId, roomName) {
+            const rooms = loadSavedRooms();
+            if (!rooms.find(r => r.id === roomId)) {
+                rooms.unshift({
+                    id: roomId,
+                    name: roomName || `Комната ${roomId}`,
+                    lastSeen: Date.now()
+                });
+                localStorage.setItem('globalspeak_rooms', JSON.stringify(rooms.slice(0, 10)));
+                renderSavedRooms();
+            }
+        }
+        
+        function deleteRoom(roomId) {
+            const rooms = loadSavedRooms().filter(r => r.id !== roomId);
+            localStorage.setItem('globalspeak_rooms', JSON.stringify(rooms));
+            renderSavedRooms();
+        }
+        
+        function renderSavedRooms() {
+            const list = document.getElementById('savedRoomsList');
+            const rooms = loadSavedRooms();
+            
+            if (rooms.length === 0) {
+                list.innerHTML = '<div class="channel-item" style="color: #5f6c7c;">Нет сохраненных комнат</div>';
+                return;
+            }
+            
+            list.innerHTML = rooms.map(room => `
+                <div class="channel-item ${currentRoom === room.id ? 'active' : ''}" onclick="joinSavedRoom('${room.id}')">
+                    <span class="channel-icon">#</span>
+                    <span class="channel-name">${room.name}</span>
+                    <span class="channel-badge">${room.id}</span>
+                    <span class="user-count" onclick="event.stopPropagation(); deleteRoom('${room.id}')" style="cursor: pointer; color: #ff6b6b;">✕</span>
+                </div>
+            `).join('');
+        }
+        
+        function joinSavedRoom(roomId) {
+            document.getElementById('roomCode').value = roomId;
+            showJoinRoomModal();
+        }
+        
+        function createRoom() {
+            const username = document.getElementById('createUsername').value.trim() || loadUsername();
+            const roomName = document.getElementById('roomName').value.trim();
+            
+            saveUsername(username);
+            
+            fetch('/api/create-room', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: roomName })
+            })
+            .then(res => res.json())
+            .then(data => {
+                saveRoom(data.roomId, data.name);
+                joinRoomWithCode(data.roomId, username);
+                hideModal('createRoomModal');
+            })
+            .catch(err => {
+                alert('Ошибка создания комнаты: ' + err.message);
+            });
+        }
+        
+        function joinRoom() {
+            const username = document.getElementById('joinUsername').value.trim() || loadUsername();
+            const roomCode = document.getElementById('roomCode').value.trim().toUpperCase();
+            
+            if (!roomCode) {
+                alert('Введите код комнаты');
+                return;
+            }
+            
+            saveUsername(username);
+            
+            // Проверяем существование комнаты
+            fetch(`/api/room/${roomCode}/info`)
+                .then(res => {
+                    if (!res.ok) throw new Error('Комната не найдена');
+                    return res.json();
+                })
+                .then(data => {
+                    joinRoomWithCode(roomCode, username);
+                    hideModal('joinRoomModal');
+                })
+                .catch(err => {
+                    alert('❌ Комната не найдена. Проверьте код.');
+                });
+        }
+        
+        function joinRoomWithCode(roomId, username) {
+            socket.emit('join-room', { roomId, username });
+            
+            document.getElementById('currentRoomName').innerHTML = `# Комната ${roomId}`;
+            document.getElementById('roomCodeDisplay').textContent = roomId;
+            document.getElementById('roomCodeDisplay').style.display = 'inline-block';
+            document.getElementById('roomTopic').textContent = `Код комнаты: ${roomId}`;
+            document.getElementById('inputArea').style.display = 'block';
+            document.getElementById('copyCodeBtn').style.display = 'flex';
+            document.getElementById('emptyState').style.display = 'none';
+            
+            currentRoom = roomId;
+            renderSavedRooms();
+        }
+        
+        function displayMessages(messages) {
+            const area = document.getElementById('messagesArea');
+            area.innerHTML = '';
+            
+            if (messages.length === 0) {
+                area.innerHTML = '<div class="empty-state">Нет сообщений. Напишите что-нибудь!</div>';
+                return;
+            }
+            
+            messages.forEach(msg => addMessage(msg));
+            area.scrollTop = area.scrollHeight;
+        }
+        
+        function addMessage(msg) {
+            const area = document.getElementById('messagesArea');
+            const isOwn = msg.username === loadUsername();
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isOwn ? 'own' : ''}`;
+            messageDiv.innerHTML = `
+                <div class="message-avatar">${msg.username[0]}</div>
+                <div class="message-content">
+                    <div class="message-header">
+                        <span class="message-author">${msg.username}</span>
+                        <span class="message-time">${msg.time}</span>
+                    </div>
+                    <div class="message-text">${escapeHtml(msg.text)}</div>
+                </div>
+            `;
+            
+            area.appendChild(messageDiv);
+            area.scrollTop = area.scrollHeight;
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function updateUsersList(users) {
+            const list = document.getElementById('usersList');
+            document.getElementById('userCount').textContent = users.length;
+            
+            list.innerHTML = users.map(user => `
+                <div class="user-item">
+                    <span class="user-status"></span>
+                    <span class="user-name">${user}</span>
+                    ${user === loadUsername() ? '<span class="user-badge">вы</span>' : ''}
+                </div>
+            `).join('');
+        }
+        
+        function copyRoomCode() {
+            if (currentRoom) {
+                navigator.clipboard.writeText(currentRoom);
+                alert('✅ Код скопирован: ' + currentRoom);
+            }
+        }
+        
+        // ========== HAMACHI ФУНКЦИИ ==========
+        
+        function getLocalIP() {
+            // Пытаемся получить локальный IP через WebRTC
+            const ip = [];
+            const RTCPeerConnection = window.RTCPeerConnection || window.webkitRTCPeerConnection;
+            const pc = new RTCPeerConnection({ iceServers: [] });
+            
+            pc.createDataChannel('');
+            pc.createOffer().then(pc.setLocalDescription.bind(pc));
+            
+            pc.onicecandidate = (ice) => {
+                if (!ice || !ice.candidate || !ice.candidate.candidate) return;
+                
+                const ipRegex = /([0-9]{1,3}(\.[0-9]{1,3}){3})/;
+                const match = ice.candidate.candidate.match(ipRegex);
+                if (match && match[1] && !ip.includes(match[1])) {
+                    ip.push(match[1]);
+                    document.getElementById('userIP').textContent = match[1];
+                    document.getElementById('localIP').textContent = match[1];
+                }
+            };
+        }
+        
+        function showHamachiInfo() {
+            document.getElementById('hamachiModal').classList.remove('hidden');
+            
+            // Пытаемся определить Hamachi IP (25.0.0.0/8)
+            fetch('https://api.ipify.org?format=json')
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('hamachiIP').textContent = '25.' + Math.floor(Math.random() * 255) + '.' + 
+                                                                      Math.floor(Math.random() * 255) + '.' + 
+                                                                      Math.floor(Math.random() * 255);
+                })
+                .catch(() => {
+                    document.getElementById('hamachiIP').textContent = '25.0.0.1';
+                });
+        }
+        
+        function copyLocalIP() {
+            const ip = document.getElementById('userIP').textContent;
+            navigator.clipboard.writeText(ip);
+            alert('✅ IP скопирован: ' + ip);
+        }
+        
+        // ========== SOCKET СОБЫТИЯ ==========
+        
+        socket.on('connect', () => {
+            document.getElementById('statusDot').style.background = '#4caf50';
+            document.getElementById('connectionStatus').textContent = 'Подключено';
+        });
+        
+        socket.on('disconnect', () => {
+            document.getElementById('statusDot').style.background = '#ff6b6b';
+            document.getElementById('connectionStatus').textContent = 'Отключено';
+        });
+        
+        socket.on('room-joined', (data) => {
+            displayMessages(data.messages);
+            updateUsersList(data.users);
+        });
+        
+        socket.on('new-message', (msg) => {
+            addMessage(msg);
+        });
+        
+        socket.on('user-joined', (data) => {
+            updateUsersList(data.users);
+            const area = document.getElementById('messagesArea');
+            const systemDiv = document.createElement('div');
+            systemDiv.className = 'system-message';
+            systemDiv.textContent = `👤 ${data.username} присоединился`;
+            area.appendChild(systemDiv);
+        });
+        
+        socket.on('user-left', (data) => {
+            updateUsersList(data.users);
+            const area = document.getElementById('messagesArea');
+            const systemDiv = document.createElement('div');
+            systemDiv.className = 'system-message';
+            systemDiv.textContent = `👋 ${data.username} покинул комнату`;
+            area.appendChild(systemDiv);
+        });
+        
+        socket.on('error', (msg) => {
+            alert('Ошибка: ' + msg);
+        });
+        
+        // ========== ОТПРАВКА ==========
+        
+        document.getElementById('sendBtn').onclick = () => {
+            const input = document.getElementById('messageInput');
+            const text = input.value.trim();
+            
+            if (text && currentRoom) {
+                socket.emit('send-message', { text });
+                input.value = '';
+            }
+        };
+        
+        document.getElementById('messageInput').onkeypress = (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('sendBtn').click();
+            }
+        };
+        
+        // ========== МОДАЛЬНЫЕ ОКНА ==========
+        
+        window.showCreateRoomModal = function() {
+            document.getElementById('createUsername').value = loadUsername();
+            document.getElementById('createRoomModal').classList.remove('hidden');
+        };
+        
+        window.showJoinRoomModal = function() {
+            document.getElementById('joinUsername').value = loadUsername();
+            document.getElementById('joinRoomModal').classList.remove('hidden');
+        };
+        
+        window.hideModal = function(id) {
+            document.getElementById(id).classList.add('hidden');
+        };
+        
+        // ========== ИНИЦИАЛИЗАЦИЯ ==========
+        
+        updateUsernameDisplay();
+        renderSavedRooms();
+        getLocalIP();
+    </script>
+</body>
+</html>
